@@ -7,7 +7,7 @@ Caveat when attempting to run the examples in non-gps environments:
 requires a mode switch to HOLD, something that is currently not supported in a
 non-gps environment.
 """
-
+import math
 import asyncio
 import time
 from mavsdk import System
@@ -18,6 +18,7 @@ pygame.joystick.init()
 ctrl = pygame.joystick.Joystick(0)
 running=True
 pos = pygame.Vector2(0,0)
+posrel = pygame.Vector2(0,0)
 rot = 0
 alt = 0
 airborne = False
@@ -67,10 +68,10 @@ async def run():
         exit()
     rot = 0
     while running: 
-        #pos.x = 0
-        #pos.y = 0
+        posrel.x = 0
+        posrel.y = 0
         #rot = 0
-        
+
         if ctrl.get_button(0) == 1:
             print("X")
             pygame.quit()
@@ -103,18 +104,18 @@ async def run():
                 airborne = True
         #AXES
         if round(ctrl.get_axis(1))==-1:
-            pos.x += 0.01
+            posrel.y += 0.01
             #print("forward") 
         if round(ctrl.get_axis(1))==1:
-            pos.x -= 0.01 
+            posrel.y -= 0.01 
             #print("back")
         #if round(ctrl.get_axis(1))==0:
         #    pos.y = 0
         if round(ctrl.get_axis(0))==-1:
-            pos.y -= 0.01
+            posrel.x += 0.01
             #print("left") 
         if round(ctrl.get_axis(0))==1:
-            pos.y += 0.01
+            posrel.x -= 0.01
             #print("right") 
         #if round(ctrl.get_axis(0))==0:
         #    pos.x = 0
@@ -125,10 +126,13 @@ async def run():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        time.sleep(0.01)
-        print(pos, alt)
+        pos.y += (math.cos(rot)*posrel.y)+(math.cos(rot+90)*posrel.x)
+        pos.x += (math.sin(rot+90)*posrel.x)+(math.sin(rot)*posrel.y)
         
-        await drone.offboard.set_position_ned(PositionNedYaw(pos.x,pos.y, -alt, rot))
+        print(posrel)
+        
+        await drone.offboard.set_position_ned(PositionNedYaw(pos.y,-pos.x, -alt, rot))
+        time.sleep(0.01)
     #await asyncio.sleep(10)
 
     #print("-- Go 5m North, 0m East, -5m Down \
